@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
+	"strings"
 )
 
 const (
@@ -30,20 +30,16 @@ type ExchangeDto struct {
 type ExchangeClient struct {
 	baseURL string
 	client  *http.Client
-	timeout time.Duration
 }
 
-func NewExchangeClient(baseURL string, client *http.Client, timeout time.Duration) *ExchangeClient {
+func NewExchangeClient(baseURL string, client *http.Client) *ExchangeClient {
 	return &ExchangeClient{
 		baseURL: baseURL,
 		client:  client,
-		timeout: timeout,
 	}
 }
 
 func (e *ExchangeClient) GetExchange(ctx context.Context, coins string) (*ExchangeDto, error) {
-	ctx, cancel := context.WithTimeout(ctx, e.timeout)
-	defer cancel()
 	url := fmt.Sprintf(apiResource, e.baseURL, coins)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	defer req.Body.Close()
@@ -56,9 +52,10 @@ func (e *ExchangeClient) GetExchange(ctx context.Context, coins string) (*Exchan
 		return nil, fmt.Errorf(errMessage, coins)
 	}
 	decoder := json.NewDecoder(response.Body)
-	var result ExchangeDto
-	if err = decoder.Decode(&result); err != nil {
+	baseResponse := make(map[string]*ExchangeDto)
+	if err = decoder.Decode(&baseResponse); err != nil {
 		return nil, err
 	}
-	return &result, nil
+	responseKey := strings.Replace(coins, "-", "", 1)
+	return baseResponse[responseKey], nil
 }
