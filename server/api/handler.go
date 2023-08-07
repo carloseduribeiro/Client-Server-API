@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"github.com/carloseduribeiro/Client-Server-API/server/client/exchange"
 	"net/http"
 )
@@ -10,13 +12,13 @@ const (
 )
 
 type ExchangeHandler struct {
-	getExchange exchange.Getter
+	getExchange exchange.GetExchangeFunc
 	repository  ExchangeRepository
 }
 
-func NewExchangeHandler(getExchange exchange.Getter, repository ExchangeRepository) *ExchangeHandler {
+func NewExchangeHandler(getExchangeFunc exchange.GetExchangeFunc, repository ExchangeRepository) *ExchangeHandler {
 	return &ExchangeHandler{
-		getExchange: getExchange,
+		getExchange: getExchangeFunc,
 		repository:  repository,
 	}
 }
@@ -24,13 +26,21 @@ func NewExchangeHandler(getExchange exchange.Getter, repository ExchangeReposito
 func (e *ExchangeHandler) GetExchange(w http.ResponseWriter, r *http.Request) {
 	exchangeResult, err := e.getExchange(r.Context(), coins)
 	if err != nil {
-		WriteErrorResponse(w, err)
+		if exchangeResult != nil && len(exchangeResult) == 0 {
+			writeResponseErr(w, http.StatusNotFound, err)
+			return
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			writeResponseErr(w, http.StatusRequestTimeout, err)
+			return
+		}
+		writeResponseErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	err = e.repository.Save(r.Context(), exchangeResult)
+	err = e.repository.Save(r.Context(), &exchangeResult[0])
 	if err != nil {
-		WriteErrorResponse(w, err)
+		writeResponseErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	_ = WriteJSON(w, http.StatusOK, exchangeResult)
+	_ = writeJSON(w, http.StatusOK, exchangeResult)
 }

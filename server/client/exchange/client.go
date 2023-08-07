@@ -14,14 +14,13 @@ const (
 	exchangeAPITimeout  = 200 * time.Millisecond
 )
 
-type Getter func(ctx context.Context, coins string) (*Exchange, error)
+type GetExchangeFunc func(ctx context.Context, coins string) ([]Exchange, error)
 
-func GetExchange(ctx context.Context, coins string) (*Exchange, error) {
+func GetExchange(ctx context.Context, coins string) ([]Exchange, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, exchangeAPITimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, exchangeAPIResource+coins, http.NoBody)
 	if err != nil {
-
 		return nil, err
 	}
 	defer req.Body.Close()
@@ -42,6 +41,8 @@ func GetExchange(ctx context.Context, coins string) (*Exchange, error) {
 	if err = decoder.Decode(&baseResponse); err != nil {
 		return nil, err
 	}
-	exchange := baseResponse[strings.ReplaceAll(coins, "-", "")]
-	return &exchange, nil
+	if exchange, ok := baseResponse[strings.ReplaceAll(coins, "-", "")]; ok {
+		return []Exchange{exchange}, nil
+	}
+	return nil, fmt.Errorf("erro no retorno da api de câmbio")
 }
