@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/carloseduribeiro/Client-Server-API/server/client/exchange"
+	"log"
 	"time"
 )
 
@@ -25,10 +26,12 @@ func (e *ExchangeRepository) Save(ctx context.Context, dto *exchange.Exchange) e
 	defer cancel()
 	stmt, err := e.conn.PrepareContext(persistCtx, insertStmt)
 	if err != nil {
+		log.Println("erro ao preparar o statement de insert:", err)
 		return err
 	}
 	_, err = stmt.ExecContext(persistCtx, dto.Code, dto.Codein, dto.Name, dto.High, dto.Low, dto.VarBid, dto.PctChange, dto.Bid, dto.Ask, dto.Timestamp, dto.CreateDate)
 	if err != nil {
+		log.Println("erro ao salvar dados no banco:", err)
 		return err
 	}
 	return nil

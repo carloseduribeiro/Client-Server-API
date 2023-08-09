@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -26,6 +27,7 @@ func GetExchange(ctx context.Context, coins string) ([]Exchange, error) {
 	defer req.Body.Close()
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
+		log.Printf("Erro na chamada para a api: %s\n", err)
 		return nil, err
 	}
 	defer response.Body.Close()
